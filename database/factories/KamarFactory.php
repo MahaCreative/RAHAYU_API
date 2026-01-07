@@ -2,64 +2,58 @@
 
 namespace Database\Factories;
 
+use App\Models\Kamar;
 use App\Models\TipeKamar;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use function Illuminate\Support\fake; // ✅ BENAR
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Kamar>
- */
 class KamarFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    protected $model = Kamar::class;
+
     public function definition(): array
     {
-        $tipe = TipeKamar::inRandomOrder()->first();
-
-        // Jika belum ada, buat dulu
-        if (!$tipe) {
-            $tipe = TipeKamar::factory()->create();
-        }
-
-        // Status kamar random
-        $status = ['tersedia', 'tidak tersedia', 'dibooking', 'dipakai'];
+        $tipe = TipeKamar::inRandomOrder()->first()
+            ?? TipeKamar::factory()->create();
 
         return [
             'tipe_kamar_id' => $tipe->id,
-            'nomor_kamar' => $this->faker->unique()->numberBetween(101, 999),
 
-            'status_kamar' => $this->faker->randomElement($status),
+            'nomor_kamar' => fake()->unique()->numberBetween(1000, 9999),
 
-            'lantai_kamar' => $this->faker->numberBetween(1, 10),
+            'status_kamar' => fake()->randomElement([
+                'tersedia',
+                'tidak tersedia',
+                'dibooking',
+                'dipakai',
+            ]),
+
+            'lantai_kamar' => fake()->numberBetween(1, 10),
 
             'foto_kamar' => 'image/room.jpg',
 
-            'catatan_kamar' => $this->faker->optional()->sentence(),
+            'catatan_kamar' => fake()->optional()->sentence(),
 
-            // Jika harga diset NULL, kita isi dari harga tipe
-            'harga_kamar' => $this->faker->randomFloat(2, 200000, 2000000),
+            'harga_kamar' => fake()->randomFloat(2, 200000, 2000000),
 
-            'kapasitas_kamar' => $this->faker->numberBetween(1, 6),
+            'kapasitas_kamar' => fake()->numberBetween(1, 6),
 
-            'fasilitas_kamar' => implode(', ', $this->faker->randomElements([
+            'fasilitas_kamar' => implode(', ', fake()->randomElements([
                 'WiFi',
                 'AC',
                 'TV',
                 'Air Panas',
                 'Sarapan',
-                'Room Service'
+                'Room Service',
             ], rand(2, 5))),
 
-            'kebijakan_kamar' => $this->faker->optional()->sentence(5),
+            'kebijakan_kamar' => fake()->optional()->sentence(5),
 
-            'foto_lainnya' => json_encode([
+            'foto_lainnya' => [
                 'image/sample1.jpg',
                 'image/sample2.jpg',
                 'image/sample3.jpg',
-            ]),
+            ],
         ];
     }
 }

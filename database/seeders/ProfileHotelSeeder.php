@@ -22,7 +22,7 @@ class ProfileHotelSeeder extends Seeder
             'logo_hotel' => 'images/logo_hotel.png',
             'foto_hotel' => 'image/hoyrl.jpg',
             'fasilitas' => 'kosong',
-            'kebijakan_hotel' => fake()->text,
+            'kebijakan_hotel' => "kebijakan hotel",
         ]);
     }
 }
