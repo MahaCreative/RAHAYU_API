@@ -34,13 +34,5 @@ class DatabaseSeeder extends Seeder
             "password" => bcrypt('password'),
             "role" => 'admin',
         ]);
-
-        $this->call([
-            ProfileHotelSeeder::class,
-            TipeKamarSeeder::class,
-            TipeLayananSeeder::class,
-        ]);
-        Kamar::factory(100)->create();
-        Layanan::factory(50)->create();
     }
 }
