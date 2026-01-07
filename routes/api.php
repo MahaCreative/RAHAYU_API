@@ -40,15 +40,15 @@ Route::get('block-user/{id}', [UserController::class, 'blockUser']);
 Route::get('unblock-user/{id}', [UserController::class, 'unblockUser']);
 Route::get('user/{id}', [UserController::class, 'show']);
 
-// Route::middleware('apiauth')->group(function () {
-// Role Admin Data Management
+Route::middleware('apiauth')->group(function () {
+    // Role Admin Data Management
 
-Route::resource('tipe-kamar', TipeKamarController::class);
-Route::resource('tipe-layanan', TipeLayananController::class);
-Route::resource('kamar', KamarController::class);
-Route::resource('layanan', LayananController::class);
-Route::put('profile-hotel', [ProfileHotelController::class, 'update']);
-// });
+    Route::resource('tipe-kamar', TipeKamarController::class);
+    Route::resource('tipe-layanan', TipeLayananController::class);
+    Route::resource('kamar', KamarController::class);
+    Route::resource('layanan', LayananController::class);
+    Route::put('profile-hotel', [ProfileHotelController::class, 'update']);
+});
 
 //Route untuk Costumer
 Route::get('get-tipe-kamar', [CostumerTipeKamarController::class, 'index']);
