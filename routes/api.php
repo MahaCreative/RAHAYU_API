@@ -33,7 +33,7 @@ Route::get('check-auth', [AuthController::class, 'checkAuth'])->middleware('auth
 // Route::resource('tipe-layanan', TipeLayananController::class)->only(['index', 'show']);
 // Route::resource('kamar', KamarController::class)->only(['index', 'show']);
 // Route::resource('layanan', LayananController::class)->only(['index', 'show']);
-// Route::get('profile-hotel', [ProfileHotelController::class, 'index']);
+
 
 Route::get('user', [UserController::class, 'index']);
 Route::get('block-user/{id}', [UserController::class, 'blockUser']);
@@ -47,6 +47,7 @@ Route::middleware('apiauth')->group(function () {
     Route::resource('tipe-layanan', TipeLayananController::class);
     Route::resource('kamar', KamarController::class);
     Route::resource('layanan', LayananController::class);
+    Route::get('profile-hotel', [ProfileHotelController::class, 'index']);
     Route::put('profile-hotel', [ProfileHotelController::class, 'update']);
 });
 
