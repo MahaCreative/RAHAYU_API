@@ -23,10 +23,10 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
-        $firstName = fake()->firstName();
-        $lastName = fake()->lastName();
+        $firstName = $this->faker->firstName();
+        $lastName = $this->faker->lastName();
         return [
-            'email' => fake()->unique->email(),
+            'email' => $this->faker->unique->email(),
 
             // Nama Lengkap
             'name' => $firstName . ' ' . $lastName,
@@ -34,19 +34,19 @@ class UserFactory extends Factory
             'last_name' => $lastName,
 
             // Data pribadi
-            'tanggal_lahir' => fake()->date('Y-m-d', '2005-01-01'),
-            'jenis_kelamin' => fake()->randomElement(['Laki-laki', 'Perempuan']),
-            'telephone' => fake()->numerify('08##########'),
+            'tanggal_lahir' => $this->faker->date('Y-m-d', '2005-01-01'),
+            'jenis_kelamin' => $this->faker->randomElement(['Laki-laki', 'Perempuan']),
+            'telephone' => $this->faker->numerify('08##########'),
 
             // Identitas
-            'nomor_identitas' => fake()->numerify('################'),
-            'jenis_identitas' => fake()->randomElement(['KTP', 'SIM', 'PASSPORT']),
-            'alamat' => fake()->address(),
+            'nomor_identitas' => $this->faker->numerify('################'),
+            'jenis_identitas' => $this->faker->randomElement(['KTP', 'SIM', 'PASSPORT']),
+            'alamat' => $this->faker->address(),
 
             // Profil
             'foto_profil' => 'image/profile.png',
             'status' => 'active',
-            'profile_complete' => fake()->randomElement(['yes', 'no']),
+            'profile_complete' => $this->faker->randomElement(['yes', 'no']),
 
             // OTP
             'otp' => null,
