@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Pembayaran;
 use App\Models\Pemesanan;
+use App\Models\invoice as InvoiceModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -90,6 +91,16 @@ class PaymentController extends Controller
         $pemesanan->update([
             'status_pemesanan' => 'waiting_payment',
         ]);
+
+        $this->syncInvoiceFromPayment(
+            $pemesanan,
+            $orderId,
+            (float) $amount,
+            'pending',
+            'bank_transfer',
+            null,
+            $va
+        );
 
         return response()->json(['success' => true, 'data' => ['pembayaran' => $pembayaran, 'midtrans' => $data]]);
     }
@@ -212,6 +223,16 @@ class PaymentController extends Controller
 
         $pemesanan->update(['status_pemesanan' => 'waiting_payment']);
 
+        $this->syncInvoiceFromPayment(
+            $pemesanan,
+            $orderId,
+            (float) $amount,
+            'pending',
+            $request->payment_type,
+            $paymentInfo,
+            null
+        );
+
         // Return response with full details
         return response()->json([
             'success' => true,
@@ -284,7 +305,7 @@ class PaymentController extends Controller
     {
         $orderId = $request->order_id;
         $statusCode = $request->status_code;
-        $grossAmount = $request->gross_amount;
+        $grossAmount = (float) $request->gross_amount;
         $signatureKey = $request->signature_key;
         $transactionStatus = $request->transaction_status;
         $fraudStatus = $request->fraud_status ?? null;
@@ -295,79 +316,150 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'message' => 'Payment not found'], 404);
         }
 
-        // Verify signature
         $serverKey = config('midtrans.server_key') ?: env('MIDTRANS_SERVER_KEY');
-        $hash = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
+        $hash = hash('sha512', $orderId . $statusCode . $request->gross_amount . $serverKey);
         if ($signatureKey !== $hash) {
             return response()->json(['success' => false, 'message' => 'Invalid signature'], 401);
         }
 
-        /**
-         * 📌 1. Update status pembayaran
-         */
         $pembayaran->update([
             'status' => $transactionStatus,
             'expiry' => $settlementTime ? date('Y-m-d H:i:s', strtotime($settlementTime)) : null,
         ]);
 
-        /**
-         * 📌 2. Tentukan status pemesanan sesuai status Midtrans
-         */
-        $statusPemesanan = 'waiting_payment'; // default
+        $statusPemesanan = 'waiting_payment';
+        $statusPembayaran = 'pending';
+        $jumlahBayar = 0;
 
         if ($transactionStatus === 'settlement') {
-            $statusPemesanan = 'success';
+            $statusPemesanan = 'confirmed';
+            $statusPembayaran = 'lunas';
+            $jumlahBayar = $grossAmount;
         } elseif ($transactionStatus === 'capture' && $fraudStatus === 'accept') {
-            $statusPemesanan = 'success';
+            $statusPemesanan = 'confirmed';
+            $statusPembayaran = 'lunas';
+            $jumlahBayar = $grossAmount;
         } elseif ($transactionStatus === 'expire') {
             $statusPemesanan = 'expired';
-        } elseif (
-            in_array($transactionStatus, ['cancel', 'deny', 'failure'])
-        ) {
+            $statusPembayaran = 'expired';
+        } elseif (in_array($transactionStatus, ['cancel', 'deny', 'failure'])) {
             $statusPemesanan = 'failed';
+            $statusPembayaran = 'failed';
         }
 
-        /**
-         * 📌 3. Update pemesanan
-         */
         $pemesanan = Pemesanan::with([
             'bookingKamars',
             'pesananLayanans',
         ])->find($pembayaran->pemesanan_id);
 
         if ($pemesanan) {
+            $totalHarga = (float) ($pemesanan->total_harga ?? 0);
+            $paidAmount = $statusPembayaran === 'lunas' ? $jumlahBayar : (float) ($pemesanan->jumlah_bayar ?? 0);
             $pemesanan->update([
-                'status_pembayaran' => 'lunas',
+                'status_pembayaran' => $statusPembayaran,
                 'status_pemesanan' => $statusPemesanan,
-                'tanggal_bayar' => $transactionStatus === 'settlement'
-                    ? date('Y-m-d H:i:s', strtotime($settlementTime))
-                    : null,
+                'jumlah_bayar' => $paidAmount,
+                'sisa_bayar' => max(0, $totalHarga - $paidAmount),
+                'waktu_konfirmasi' => $statusPembayaran === 'lunas'
+                    ? date('Y-m-d H:i:s', strtotime($settlementTime ?: now()))
+                    : $pemesanan->waktu_konfirmasi,
             ]);
-        }
-        if (count($pemesanan->bookingKamars) > 0) {
+
             foreach ($pemesanan->bookingKamars as $bookingKamar) {
+                $bkTotal = (float) ($bookingKamar->total_harga ?? 0);
                 $bookingKamar->update([
                     'status_booking' => 'pending',
-                    'jumlah_bayar' => $request->gross_amount,
-                    'status_pembayaran' => 'lunas'
+                    'jumlah_bayar' => $jumlahBayar,
+                    'sisa_bayar' => max(0, $bkTotal - $jumlahBayar),
+                    'status_pembayaran' => $statusPembayaran,
                 ]);
             }
-        }
-        if (count($pemesanan->bookingKamars) > 0) {
+
             foreach ($pemesanan->pesananLayanans as $pesananLayanan) {
+                $layananTotal = (float) ($pesananLayanan->total_harga ?? 0);
                 $pesananLayanan->update([
                     'status_pemesanan' => 'pending',
-                    'jumlah_bayar' => $request->gross_amount,
-                    'status_pembayaran' => 'lunas'
+                    'jumlah_bayar' => $jumlahBayar,
+                    'sisa_bayar' => max(0, $layananTotal - $jumlahBayar),
+                    'tanggal_bayar' => $statusPembayaran === 'lunas'
+                        ? date('Y-m-d H:i:s', strtotime($settlementTime ?: now()))
+                        : $pesananLayanan->tanggal_bayar,
+                    'status_pembayaran' => $statusPembayaran,
                 ]);
             }
         }
+
+        $this->syncInvoiceFromPayment(
+            $pemesanan,
+            $orderId,
+            $grossAmount,
+            $statusPembayaran,
+            $request->payment_type ?? $pembayaran->bank,
+            null,
+            $pembayaran->va_number
+        );
 
         return response()->json([
             'success' => true,
             'message' => 'Callback processed',
             'midtrans_status' => $transactionStatus,
-            'mapped_status' => $statusPemesanan
+            'mapped_status' => $statusPemesanan,
         ]);
+    }
+
+    private function syncInvoiceFromPayment(
+        ?Pemesanan $pemesanan,
+        ?string $orderId,
+        float $amount,
+        string $invoiceStatus,
+        ?string $paymentType,
+        $paymentInfo,
+        ?string $paymentCode
+    ): void {
+        if (! $pemesanan) {
+            return;
+        }
+
+        $invoice = InvoiceModel::where('pemesanan_id', $pemesanan->id)->latest()->first();
+        $jumlahBayar = $invoiceStatus === 'lunas' ? $amount : 0;
+
+        if (! $invoice) {
+            InvoiceModel::create([
+                'invoice_number' => strtoupper(uniqid('INV')),
+                'petugas_id' => null,
+                'pemesanan_id' => $pemesanan->id,
+                'user_id' => $pemesanan->user_id,
+                'order_id' => $orderId ?: ('ORDER-' . $pemesanan->id . '-' . time()),
+                'total_amount' => $amount,
+                'jumlah_bayar' => $jumlahBayar,
+                'payment_type' => $paymentType,
+                'payment_info' => is_array($paymentInfo) ? json_encode($paymentInfo) : $paymentInfo,
+                'payment_code' => $paymentCode,
+                'status_pembayaran' => $invoiceStatus,
+                'succeded_at' => $invoiceStatus === 'lunas' ? now()->toDateString() : null,
+            ]);
+            return;
+        }
+
+        $updatePayload = [
+            'order_id' => $orderId ?: $invoice->order_id,
+            'total_amount' => $invoice->total_amount > 0 ? $invoice->total_amount : $amount,
+            'jumlah_bayar' => $invoiceStatus === 'lunas' ? $amount : $invoice->jumlah_bayar,
+            'payment_type' => $paymentType ?: $invoice->payment_type,
+            'payment_code' => $paymentCode ?: $invoice->payment_code,
+            'status_pembayaran' => $invoiceStatus,
+        ];
+
+        if ($paymentInfo) {
+            $updatePayload['payment_info'] = is_array($paymentInfo)
+                ? json_encode($paymentInfo)
+                : $paymentInfo;
+        }
+
+        if ($invoiceStatus === 'lunas') {
+            $updatePayload['succeded_at'] = now()->toDateString();
+        }
+
+        $invoice->update($updatePayload);
     }
 }

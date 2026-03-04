@@ -24,7 +24,7 @@ return new class extends Migration
             $table->json('payment_info')->nullable();
             $table->string('payment_code')->nullable();
             $table->date('succeded_at')->nullable();
-            $table->string('status_pembayaran')->default('pending'); // pending, settlement, cancelled
+            $table->string('status_pembayaran')->default('pending'); // pending, lunas, belum lunas, dibatalkan
             $table->string('status_konfirmasi')->default('unconfirmed'); // unconfirmed, confirmed, rejected
             $table->date('waktu_konfirmasi')->nullable();
             $table->timestamps();

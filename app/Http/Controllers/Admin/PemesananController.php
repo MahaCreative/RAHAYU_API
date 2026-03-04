@@ -21,7 +21,14 @@ class PemesananController extends Controller
     {
         $this->authorizeAdmin($request);
 
-        $query = Pemesanan::query()->with(['bookingKamars.kamar', 'pesananLayanans.layanan', 'invoice', 'user']);
+        $query = Pemesanan::query()->with([
+            'bookingKamars.kamar',
+            'bookingKamars.tamu',
+            'pesananLayanans.layanan',
+            'invoice',
+            'pembayarans',
+            'user'
+        ]);
 
         if ($request->filled('status')) {
             $status = $request->query('status');
@@ -56,7 +63,14 @@ class PemesananController extends Controller
     {
         $this->authorizeAdmin($request);
 
-        $pemesanan = Pemesanan::with(['bookingKamars.kamar', 'pesananLayanans.layanan', 'invoice', 'user'])
+        $pemesanan = Pemesanan::with([
+            'bookingKamars.kamar',
+            'bookingKamars.tamu',
+            'pesananLayanans.layanan',
+            'invoice',
+            'pembayarans',
+            'user'
+        ])
             ->find($id);
 
         if (!$pemesanan) {
@@ -80,7 +94,14 @@ class PemesananController extends Controller
     {
         $this->authorizeAdmin($request);
 
-        $query = Pemesanan::with(['bookingKamars.kamar', 'pesananLayanans.layanan', 'invoice', 'user']);
+        $query = Pemesanan::with([
+            'bookingKamars.kamar',
+            'bookingKamars.tamu',
+            'pesananLayanans.layanan',
+            'invoice',
+            'pembayarans',
+            'user'
+        ]);
         if ($request->filled('status')) {
             $status = $request->query('status');
             if ($status === 'cancelled_done') {

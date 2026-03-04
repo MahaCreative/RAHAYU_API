@@ -44,13 +44,16 @@ class BookingKamarController extends Controller
         }
 
         $guests = $request->input('guests', []);
+        $checkinAt = $request->input('checkin_at');
 
         // Validate count
         if (! is_array($guests) || count($guests) !== (int) $bk->jumlah_tamu) {
             return response()->json(['message' => 'Jumlah tamu tidak sesuai dengan booking'], 422);
         }
 
-        // Create guest records
+        // Replace existing guests to keep report data consistent per booking
+        Tamu::where('booking_kamar_id', $bk->id)->delete();
+
         $created = [];
         foreach ($guests as $g) {
             $t = Tamu::create([
@@ -64,7 +67,7 @@ class BookingKamarController extends Controller
             $created[] = $t;
         }
 
-        $bk->waktu_checkin = now();
+        $bk->waktu_checkin = $checkinAt ? date('Y-m-d H:i:s', strtotime($checkinAt)) : now();
         $bk->status_booking = 'checked_in';
         $bk->save();
 
@@ -79,7 +82,8 @@ class BookingKamarController extends Controller
         $bk = BookingKamar::find($id);
         if (! $bk) return response()->json(['message' => 'Not found'], 404);
 
-        $bk->waktu_checkout = now();
+        $checkoutAt = $request->input('checkout_at');
+        $bk->waktu_checkout = $checkoutAt ? date('Y-m-d H:i:s', strtotime($checkoutAt)) : now();
         $bk->status_booking = 'checked_out';
         $bk->save();
 

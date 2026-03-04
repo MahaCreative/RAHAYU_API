@@ -12,9 +12,15 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query()->where('profile_completed', 'yes');
+        $query = User::query()->where('profile_complete', 'yes');
         if ($request->cari) {
-            $query->where('name', 'like', '%' . $request->cari . '%');
+            $query->where(function ($q) use ($request) {
+                $term = '%' . $request->cari . '%';
+                $q->where('name', 'like', $term)
+                    ->orWhere('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term)
+                    ->orWhere('email', 'like', $term);
+            });
         }
         if ($request->jenis_kelamin) {
             $query->where('jenis_kelamin', $request->jenis_kelamin);

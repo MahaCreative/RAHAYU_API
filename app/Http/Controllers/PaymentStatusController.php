@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Pembayaran;
 use App\Models\Pemesanan;
+use App\Models\invoice as InvoiceModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -79,9 +80,23 @@ class PaymentStatusController extends Controller
 
                 // Update pemesanan status if needed
                 if ($status === 'settlement') {
-                    $pemesanan->update(['status_pemesanan' => 'confirmed']);
+                    $pemesanan->update([
+                        'status_pemesanan' => 'confirmed',
+                        'status_pembayaran' => 'lunas',
+                        'jumlah_bayar' => $pembayaran->total,
+                        'sisa_bayar' => max(0, (float) ($pemesanan->total_harga ?? 0) - (float) ($pembayaran->total ?? 0)),
+                    ]);
                 } elseif (in_array($status, ['expire', 'cancel', 'deny'])) {
-                    $pemesanan->update(['status_pemesanan' => 'cancelled']);
+                    $pemesanan->update(['status_pemesanan' => 'cancelled', 'status_pembayaran' => 'failed']);
+                }
+
+                $inv = InvoiceModel::where('pemesanan_id', $pemesanan_id)->latest()->first();
+                if ($inv) {
+                    $inv->update([
+                        'order_id' => $orderId,
+                        'status_pembayaran' => $status === 'settlement' ? 'lunas' : (in_array($status, ['expire', 'cancel', 'deny']) ? 'failed' : 'pending'),
+                        'jumlah_bayar' => $status === 'settlement' ? (float) ($pembayaran->total ?? 0) : (float) ($inv->jumlah_bayar ?? 0),
+                    ]);
                 }
 
                 return response()->json([

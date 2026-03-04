@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\BookingKamar;
 use App\Models\Tamu;
 use App\Models\invoice as InvoiceModel;
+use App\Models\Pembayaran;
 use App\Models\Pemesanan;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -31,10 +32,10 @@ class DashboardController extends Controller
 
         // Booking status counts
         $totalBookings = BookingKamar::count();
-        $pending = BookingKamar::where('status_booking', 'pending')->count();
-        $confirmed = BookingKamar::where('status_booking', 'confirmed')->count();
-        $checkedIn = BookingKamar::whereIn('status_booking', ['checked_in', 'in'])->count();
-        $checkedOut = BookingKamar::whereIn('status_booking', ['checked_out', 'done', 'completed'])->count();
+        $pending = BookingKamar::whereIn('status_booking', ['pending', 'wait', 'waiting_payment'])->count();
+        $confirmed = BookingKamar::whereIn('status_booking', ['confirmed', 'paid', 'settlement'])->count();
+        $checkedIn = BookingKamar::whereIn('status_booking', ['checked_in', 'checkin', 'in'])->count();
+        $checkedOut = BookingKamar::whereIn('status_booking', ['checked_out', 'checkout', 'done', 'completed'])->count();
         $cancelled = BookingKamar::where(function ($q) {
             $q->where('status_booking', 'cancel')->orWhere('status_booking', 'cancelled')->orWhere('status_booking', 'rejected');
         })->count();
@@ -52,12 +53,31 @@ class DashboardController extends Controller
         // Invoice totals
         $totalInvoiceAmount = (float) InvoiceModel::sum('total_amount');
         $totalPaid = (float) InvoiceModel::sum('jumlah_bayar');
+        $totalFromPembayaran = (float) Pembayaran::sum('total');
+        $paidFromPembayaran = (float) Pembayaran::whereIn('status', [
+            'settlement',
+            'capture',
+            'paid',
+            'success',
+        ])->sum('total');
+
+        if ($totalInvoiceAmount <= 0 && $totalFromPembayaran > 0) {
+            $totalInvoiceAmount = $totalFromPembayaran;
+        }
+        if ($totalPaid <= 0 && $paidFromPembayaran > 0) {
+            $totalPaid = $paidFromPembayaran;
+        }
 
         // Recent metrics (last 7 days)
         $since = now()->subDays(7);
         $recentBookings = BookingKamar::whereDate('created_at', '>=', $since)->count();
         $recentGuests = Tamu::whereDate('created_at', '>=', $since)->count();
-        $recentRevenue = InvoiceModel::whereDate('created_at', '>=', $since)->sum('jumlah_bayar');
+        $recentRevenue = (float) InvoiceModel::whereDate('created_at', '>=', $since)->sum('jumlah_bayar');
+        if ($recentRevenue <= 0) {
+            $recentRevenue = (float) Pembayaran::whereDate('created_at', '>=', $since)
+                ->whereIn('status', ['settlement', 'capture', 'paid', 'success'])
+                ->sum('total');
+        }
 
         $data = [
             'bookings' => [

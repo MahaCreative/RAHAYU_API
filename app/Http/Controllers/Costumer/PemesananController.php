@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Costumer;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Pemesanan;
+use App\Models\invoice as InvoiceModel;
 use Illuminate\Http\JsonResponse;
 
 use Illuminate\Support\Facades\Auth;
@@ -147,6 +148,17 @@ class PemesananController extends Controller
             'catatan_booking' => $data['catatan'] ?? null,
             'waktu_booking' => now(),
             'status_pembayaran' => 'belum lunas',
+        ]);
+
+        InvoiceModel::create([
+            'invoice_number' => strtoupper(uniqid('INV')),
+            'petugas_id' => null,
+            'order_id' => null,
+            'pemesanan_id' => $pemesanan->id,
+            'user_id' => $user->id,
+            'total_amount' => $totalHarga,
+            'jumlah_bayar' => 0,
+            'status_pembayaran' => 'pending',
         ]);
 
         $pemesanan->load(['bookingKamars.kamar', 'pesananLayanans.layanan', 'invoice']);

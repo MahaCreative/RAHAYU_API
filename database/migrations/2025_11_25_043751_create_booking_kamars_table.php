@@ -21,7 +21,7 @@ return new class extends Migration
             $table->date('tanggal_checkout');
             $table->integer('jumlah_tamu');
             $table->decimal('total_harga', 10, 2)->nullable();
-            $table->string('status_booking')->default('pending'); // pending, confirmed, proses, canceled
+            $table->string('status_booking')->default('pending'); // pending, check_in, check_out, selesai, dibatalkan
             $table->text('catatan_booking')->nullable();
             $table->dateTime('waktu_booking')->nullable();
             $table->dateTime('waktu_checkin')->nullable();

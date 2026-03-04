@@ -9,6 +9,26 @@ use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
+    public function profile(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        return response()->json(['user' => $user]);
+    }
+
+    public function checkAuth(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['authenticated' => false], 401);
+        }
+
+        return response()->json(['authenticated' => true, 'user' => $user]);
+    }
+
     public function register(Request $request)
     {
         $request->validate([
