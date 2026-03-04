@@ -94,7 +94,15 @@ class KamarController extends Controller
      */
     public function show(string $id)
     {
-        $kamar = Kamar::with('tipeKamar', 'bookingKamars')->where('id', $id)->first();
+        $kamar = Kamar::with([
+            'tipeKamar',
+            'bookingKamars' => function ($q) {
+                $q->with([
+                    'tamu:id,booking_kamar_id,nama',
+                    'pemesanan.user:id,name,email',
+                ])->orderByDesc('tanggal_checkin');
+            },
+        ])->where('id', $id)->first();
         return response()->json([
             'data' => $kamar
         ]);

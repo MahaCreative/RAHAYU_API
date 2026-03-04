@@ -38,7 +38,7 @@ class Kamar extends Model
 
     public function bookingKamars()
     {
-        return $this->belongsTo(BookingKamar::class);
+        return $this->hasMany(BookingKamar::class, 'kamar_id');
     }
 
     public function cartItems(): MorphMany
