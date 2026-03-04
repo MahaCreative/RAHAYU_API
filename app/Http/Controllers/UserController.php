@@ -12,7 +12,8 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query()->where('profile_complete', 'yes');
+        $query = User::query()
+            ->where('role', '!=', 'admin');
         if ($request->cari) {
             $query->where(function ($q) use ($request) {
                 $term = '%' . $request->cari . '%';

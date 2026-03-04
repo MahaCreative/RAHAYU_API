@@ -81,6 +81,12 @@ class BookingKamarController extends Controller
 
         $bk = BookingKamar::find($id);
         if (! $bk) return response()->json(['message' => 'Not found'], 404);
+        if ($bk->status_booking === 'checked_out') {
+            return response()->json(['message' => 'Booking already checked out'], 422);
+        }
+        if ($bk->status_booking !== 'checked_in') {
+            return response()->json(['message' => 'Checkout hanya bisa setelah check-in'], 422);
+        }
 
         $checkoutAt = $request->input('checkout_at');
         $bk->waktu_checkout = $checkoutAt ? date('Y-m-d H:i:s', strtotime($checkoutAt)) : now();
