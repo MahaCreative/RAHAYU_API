@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\BookingKamar;
 use App\Models\Tamu;
+use Illuminate\Support\Facades\DB;
 
 class BookingKamarController extends Controller
 {
@@ -22,7 +23,7 @@ class BookingKamarController extends Controller
     {
         $this->authorizeAdmin($request);
 
-        $bk = BookingKamar::find($id);
+        $bk = BookingKamar::with('kamar')->find($id);
         if (! $bk) return response()->json(['message' => 'Not found'], 404);
 
         // If scan payload provided, verify signature
@@ -59,25 +60,35 @@ class BookingKamarController extends Controller
             }
         }
 
-        // Replace existing guests to keep report data consistent per booking
-        Tamu::where('booking_kamar_id', $bk->id)->delete();
+        $created = DB::transaction(function () use ($bk, $guests, $checkinAt) {
+            // Replace existing guests to keep report data consistent per booking
+            Tamu::where('booking_kamar_id', $bk->id)->delete();
 
-        $created = [];
-        foreach ($guests as $g) {
-            $t = Tamu::create([
-                'nama' => $g['nama'] ?? null,
-                'nik' => $g['nik'] ?? null,
-                'jenis_kelamin' => $g['jenis_kelamin'] ?? null,
-                'jenis_identitas' => $g['jenis_identitas'] ?? null,
-                'kamar_id' => $g['kamar_id'] ?? $bk->kamar_id,
-                'booking_kamar_id' => $bk->id,
-            ]);
-            $created[] = $t;
-        }
+            $created = [];
+            foreach ($guests as $g) {
+                $t = Tamu::create([
+                    'nama' => $g['nama'] ?? null,
+                    'nik' => $g['nik'] ?? null,
+                    'jenis_kelamin' => $g['jenis_kelamin'] ?? null,
+                    'jenis_identitas' => $g['jenis_identitas'] ?? null,
+                    'kamar_id' => $g['kamar_id'] ?? $bk->kamar_id,
+                    'booking_kamar_id' => $bk->id,
+                ]);
+                $created[] = $t;
+            }
 
-        $bk->waktu_checkin = $checkinAt ? date('Y-m-d H:i:s', strtotime($checkinAt)) : now();
-        $bk->status_booking = 'checked_in';
-        $bk->save();
+            $bk->waktu_checkin = $checkinAt ? date('Y-m-d H:i:s', strtotime($checkinAt)) : now();
+            $bk->status_booking = 'checked_in';
+            $bk->save();
+
+            // Sync room status with active stay
+            if ($bk->kamar) {
+                $bk->kamar->status_kamar = 'Dipakai';
+                $bk->kamar->save();
+            }
+
+            return $created;
+        });
 
         return response()->json(['success' => true, 'guests' => $created]);
     }
@@ -87,7 +98,7 @@ class BookingKamarController extends Controller
     {
         $this->authorizeAdmin($request);
 
-        $bk = BookingKamar::find($id);
+        $bk = BookingKamar::with('kamar')->find($id);
         if (! $bk) return response()->json(['message' => 'Not found'], 404);
         if ($bk->status_booking === 'checked_out') {
             return response()->json(['message' => 'Booking already checked out'], 422);
@@ -97,9 +108,23 @@ class BookingKamarController extends Controller
         }
 
         $checkoutAt = $request->input('checkout_at');
-        $bk->waktu_checkout = $checkoutAt ? date('Y-m-d H:i:s', strtotime($checkoutAt)) : now();
-        $bk->status_booking = 'checked_out';
-        $bk->save();
+
+        DB::transaction(function () use ($bk, $checkoutAt) {
+            $bk->waktu_checkout = $checkoutAt ? date('Y-m-d H:i:s', strtotime($checkoutAt)) : now();
+            $bk->status_booking = 'checked_out';
+            $bk->save();
+
+            if ($bk->kamar) {
+                $stillOccupied = BookingKamar::query()
+                    ->where('kamar_id', $bk->kamar_id)
+                    ->where('id', '!=', $bk->id)
+                    ->where('status_booking', 'checked_in')
+                    ->exists();
+
+                $bk->kamar->status_kamar = $stillOccupied ? 'Dipakai' : 'Tersedia';
+                $bk->kamar->save();
+            }
+        });
 
         return response()->json(['success' => true, 'booking_kamar' => $bk]);
     }
