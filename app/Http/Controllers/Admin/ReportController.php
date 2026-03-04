@@ -51,7 +51,13 @@ class ReportController extends Controller
                 ->map(fn ($n) => trim((string) $n))
                 ->filter()
                 ->values();
-            $row->nama_tamu = $names->implode(', ');
+            $fallbackName = trim((string) ($row->pemesanan->user->name ?? ''));
+            if ($fallbackName === '') {
+                $fallbackName = trim((string) ($row->pemesanan->user->email ?? ''));
+            }
+            $row->nama_tamu = $names->isNotEmpty()
+                ? $names->implode(', ')
+                : ($fallbackName !== '' ? $fallbackName : '-');
             return $row;
         });
 
@@ -62,6 +68,9 @@ class ReportController extends Controller
                 fputcsv($out, ['ID', 'Kode Booking', 'User', 'Kamar', 'Nama Tamu', 'Checkin', 'Checkout', 'Jumlah Tamu', 'Status', 'Waktu Checkin', 'Waktu Checkout']);
                 foreach ($rows as $r) {
                     $namaTamu = $r->tamu->pluck('nama')->filter()->implode(', ');
+                    if (!$namaTamu) {
+                        $namaTamu = $r->pemesanan->user->name ?? $r->pemesanan->user->email ?? '-';
+                    }
                     fputcsv($out, [
                         $r->id,
                         $r->kode_booking,

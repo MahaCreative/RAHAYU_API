@@ -50,6 +50,14 @@ class BookingKamarController extends Controller
         if (! is_array($guests) || count($guests) !== (int) $bk->jumlah_tamu) {
             return response()->json(['message' => 'Jumlah tamu tidak sesuai dengan booking'], 422);
         }
+        foreach ($guests as $index => $g) {
+            if (!isset($g['nama']) || trim((string) $g['nama']) === '') {
+                return response()->json([
+                    'message' => 'Nama tamu wajib diisi',
+                    'index' => $index,
+                ], 422);
+            }
+        }
 
         // Replace existing guests to keep report data consistent per booking
         Tamu::where('booking_kamar_id', $bk->id)->delete();
