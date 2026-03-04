@@ -31,7 +31,7 @@ class LayananController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            "tipe_layanan_id" => 'required|numeric|exists:tipe_layanans,id',
+            "tipe_layanan_id" => 'required|integer|exists:tipe_layanans,id',
             "nama_layanan" => 'required|min:3|max:50|unique:layanans,nama_layanan',
             "deskripsi_layanan" => 'nullable|min:3',
             "harga_layanan" => 'required|numeric|min_digits:3|max_digits:7',
@@ -43,7 +43,14 @@ class LayananController extends Controller
             $file->move(public_path('uploads/layanan/'), $filename);
             $validated['foto_layanan'] = 'uploads/layanan/' . $filename;
         }
-        $layanan = Layanan::create($validated);
+        $payload = [
+            'tipe_layanan_id' => (int) $validated['tipe_layanan_id'],
+            'nama_layanan' => $validated['nama_layanan'],
+            'deskripsi_layanan' => $validated['deskripsi_layanan'] ?? null,
+            'harga_layanan' => $validated['harga_layanan'],
+            'foto_layanan' => $validated['foto_layanan'],
+        ];
+        $layanan = Layanan::create($payload);
         return response()->json([
             'message' => 'Layanan created successfully',
             'data' => $layanan
@@ -68,20 +75,26 @@ class LayananController extends Controller
     {
         $layanan = Layanan::findOrFail($id);
         $validated = $request->validate([
-            "tipe_layanan_id" => 'required|numeric|exists:tipe_layanans,id',
+            "tipe_layanan_id" => 'required|integer|exists:tipe_layanans,id',
             "nama_layanan" => 'required|min:3|max:50|unique:layanans,nama_layanan,' . $id,
             "deskripsi_layanan" => 'nullable|min:3',
             "harga_layanan" => 'required|numeric',
             "foto_layanan" => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
         ]);
-        $validated['foto_layanan'] = $layanan->foto_layanan;
+        $fotoLayanan = $layanan->foto_layanan;
         if ($request->hasFile('foto_layanan')) {
             $file = $request->file('foto_layanan');
             $filename = time() . '_' . $file->getClientOriginalName();
             $file->move(public_path('uploads/layanan/'), $filename);
-            $validated['foto_layanan'] = 'uploads/layanan/' . $filename;
+            $fotoLayanan = 'uploads/layanan/' . $filename;
         }
-        $layanan->update($validated);
+        $layanan->update([
+            'tipe_layanan_id' => (int) $validated['tipe_layanan_id'],
+            'nama_layanan' => $validated['nama_layanan'],
+            'deskripsi_layanan' => $validated['deskripsi_layanan'] ?? null,
+            'harga_layanan' => $validated['harga_layanan'],
+            'foto_layanan' => $fotoLayanan,
+        ]);
         return response()->json([
             'message' => 'Layanan updated successfully',
             'data' => $layanan
