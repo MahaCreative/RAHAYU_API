@@ -17,12 +17,12 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
-            $table->date('tanggal_lahir')->nullable();
-            $table->string('jenis_kelamin')->nullable();
+            $table->date('tanggal_lahir')->nullable(); // DATE
+            $table->string('jenis_kelamin')->nullable(); // LAKI-LAKI, PEREMPUAN
             $table->string('telephone')->nullable();
             $table->bigInteger('nomor_identitas')->nullable();
             $table->string('alamat')->nullable();
-            $table->string('jenis_identitas')->nullable();
+            $table->string('jenis_identitas')->nullable(); // KTP, SIM, Passport
             $table->string('foto_profil')->default('image/profile.png');
             $table->string('status')->default('active');
             $table->string('profile_complete')->default('no');

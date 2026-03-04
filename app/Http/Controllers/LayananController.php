@@ -30,7 +30,7 @@ class LayananController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             "tipe_layanan_id" => 'required|numeric|exists:tipe_layanans,id',
             "nama_layanan" => 'required|min:3|max:50|unique:layanans,nama_layanan',
             "deskripsi_layanan" => 'nullable|min:3',

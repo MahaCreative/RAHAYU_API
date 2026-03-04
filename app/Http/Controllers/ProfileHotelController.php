@@ -20,9 +20,9 @@ class ProfileHotelController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request)
     {
-        $profileHotel = ProfileHotel::findOrFail($id);
+        $profileHotel = ProfileHotel::firstOrFail();
         $validated = $request->validate([
             "nama_hotel" => 'required|string|min:3|max:50',
             "subtitle" => 'nullable|min:25|max:100',
@@ -30,8 +30,8 @@ class ProfileHotelController extends Controller
             "nomor_telepon" => 'required|numeric|digits_between:10,15',
             "email_hotel" => 'required|email',
             "deskripsi_hotel" => 'nullable|string|min:10|max:500',
-            "logo_hotel" => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            "foto_hotel" => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            "logo_hotel" => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            "foto_hotel" => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             "fasilitas" => 'required',
             "kebijakan_hotel" => 'nullable|string|min:10|max:500',
             "jam_check_in" => 'nullable|date',
@@ -49,9 +49,6 @@ class ProfileHotelController extends Controller
             $foto_hotel = $request->file('foto_hotel')->store('profile_hotel', 'public');
         }
         $validated['foto_lainnya'] = $validated['foto_lainnya'] ?? [];
-        foreach ($request->file('foto_lainnya', []) as $file) {
-            $validated['foto_lainnya'][] = $file->store('profile_hotel', 'public');
-        }
         foreach ($request->file('foto_lainnya', []) as $file) {
             $validated['foto_lainnya'][] = $file->store('profile_hotel', 'public');
         }
